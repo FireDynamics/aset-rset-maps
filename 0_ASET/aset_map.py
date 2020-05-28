@@ -1,36 +1,73 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import xml.etree.ElementTree as ET
 from pylab import cm
 import glob
-from scipy.misc import imresize
+from PIL import Image
+import slice_reader
+
+aset_quantity = "SOOT EXTINCTION COEFFICIENT"
+aset_quantity_height = 2.0
 
 # ------------------------------------------------------------------------------
 # STEP I
 # convert FDS slicefiles to ascii files
 # ------------------------------------------------------------------------------
 
-#ToDo
+print("Step I: Read FDS slicefiles...")
+
+data_root = "HRR_60kW"
+smv_file_name = "ASET_animation.smv"
+meshes = slice_reader.readMeshes(data_root + '/' + smv_file_name)
+slice_infos = slice_reader.readSliceInfos(data_root + '/' + smv_file_name)
+
+print("slice files found:")
+for s in slice_infos:
+    print(s.infoString())
+
+# choose only the extinction coefficient slice
+slice_extinction = slice_reader.findSlices(slice_infos, meshes, aset_quantity, 2, aset_quantity_height)[0]
+slice_extinction.readAllTimes(data_root)
+slice_extinction.readData(data_root)
+slice_extinction.mapData(meshes)
+print(slice_extinction.times)
+
+slice_times = slice_extinction.times
+slice_data = slice_extinction.sd
+slice_xs = slice_extinction.sm.mesh[0]
+slice_ys = slice_extinction.sm.mesh[1]
+
+print(slice_xs, slice_ys)
+
+it = 5
+for iy in range(slice_data[it].shape[1]):
+    for ix in range(slice_data[it].shape[0]):
+        print(ix, iy, slice_xs[ix,iy], slice_ys[ix,iy], slice_data[it][ix,iy])
+        nix = round(slice_xs[ix,iy] / 0.6)
+        niy = round(slice_ys[ix,iy] / 0.6)
+        print(nix, niy)
 
 # ------------------------------------------------------------------------------
 # STEP II
 # generate the ASET map from FDS slicefiles
 # ------------------------------------------------------------------------------
 
-print 'Step II: Generate the ASET map from FDS slicefiles...'
+print("Step II: Generate the ASET map from FDS slicefiles...")
 
 # quantities of interest (the dictionary includes the threshold as well)
-quantities = {'extinction':0.23}#, 'temperature':45}
+quantities = {'extinction':0.23}
 
-# Setup ASET map
+# Setup ASET map (floor of 30 m x 10 m)
+# define floor elements' extension in meters
 delta = 0.6
-x = np.arange(0, 30+0.01, delta)
-y = np.arange(0, 10+0.01, delta)
+# define floor elements' centers
+x = np.arange(delta/2, 30, delta)
+y = np.arange(delta/2, 10, delta)
 
+# create an empty map with a maximal ASET of 120 seconds
 aset_map = np.zeros((len(y), len(x)))
 aset_map[:] = 120
 
-aset_map_glob = np.zeros((len(y), len(x)))
+aset_map_glob = np.zeros_like(aset_map)
 aset_map_glob[:] = 120
 
 cmap = cm.get_cmap('RdYlGn', 12)
@@ -42,14 +79,16 @@ for q in quantities:
     slices = sorted(slices, key=lambda slice: int(slice[ slice.rfind('_')+1 : -4 ]) )
 
     for i, slice in enumerate(slices[:]):
-        slice_nr = int( slice[  slice.rfind('_')+1 : -4 ] )
-        print '\t\-->', slice
+        slice_nr = int(slice[slice.rfind('_')+1 : -4])
+        print("\t --> ", slice)
 
         # load ascii slice file
         sf = np.loadtxt(slice, delimiter=' ')
 
         # interpolate slice file to ASET map resolution dx=0.2 m --> dx=0.6 m
-        sf_interp = imresize(sf, np.shape(aset_map), interp='bilinear')
+        sf_interp = np.array(Image.fromarray(sf).resize((len(x), len(y))))#imresize(sf, np.shape(aset_map), interp='bilinear')
+        # sf_interp.transpose()
+        print(sf.shape, sf_interp.shape, aset_map.shape)
 
         # ASET map generation
         for j, row in enumerate(sf_interp):
