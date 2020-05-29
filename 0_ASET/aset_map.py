@@ -135,7 +135,7 @@ plt.ylim(0,10)
 plt.tight_layout()
 
 # save ASET map as plot
-plt.savefig('ASET_map.png', dpi=300)
+plt.savefig('aset_map.png', dpi=300)
 
 # save ASET map as txt
-np.savetxt('ASET_map.txt', aset_map_glob)
+np.savetxt('aset_map.txt', aset_map_glob)
