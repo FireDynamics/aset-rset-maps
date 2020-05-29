@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from pylab import cm
@@ -5,8 +6,7 @@ import glob
 from PIL import Image
 import slice_reader
 
-aset_quantity = "SOOT EXTINCTION COEFFICIENT"
-aset_quantity_height = 2.0
+data_root = "HRR_60kW"
 
 # ------------------------------------------------------------------------------
 # STEP I
@@ -15,36 +15,43 @@ aset_quantity_height = 2.0
 
 print("Step I: Read FDS slicefiles...")
 
-data_root = "HRR_60kW"
-smv_file_name = "ASET_animation.smv"
-meshes = slice_reader.readMeshes(data_root + '/' + smv_file_name)
-slice_infos = slice_reader.readSliceInfos(data_root + '/' + smv_file_name)
+aset_quantity = "SOOT EXTINCTION COEFFICIENT"
+aset_quantity_height = 2.0
 
-print("slice files found:")
-for s in slice_infos:
-    print(s.infoString())
+smv_file_path = glob.glob(os.path.join(data_root, "*.smv"))[0]
+meshes = slice_reader.readMeshes(smv_file_path)
+slice_infos = slice_reader.readSliceInfos(smv_file_path)
+
+#print("slice files found:")
+#for s in slice_infos:
+#    print(s.infoString())
 
 # choose only the extinction coefficient slice
 slice_extinction = slice_reader.findSlices(slice_infos, meshes, aset_quantity, 2, aset_quantity_height)[0]
 slice_extinction.readAllTimes(data_root)
 slice_extinction.readData(data_root)
 slice_extinction.mapData(meshes)
-print(slice_extinction.times)
+#print(slice_extinction.times)
 
 slice_times = slice_extinction.times
-slice_data = slice_extinction.sd
+slice_data = {'extinction' : slice_extinction.sd}
 slice_xs = slice_extinction.sm.mesh[0]
 slice_ys = slice_extinction.sm.mesh[1]
 
-print(slice_xs, slice_ys)
+out_path = os.path.join(data_root, 'ascii_slices')
+if not os.path.exists(out_path):
+    os.mkdir(out_path)
 
-it = 5
-for iy in range(slice_data[it].shape[1]):
-    for ix in range(slice_data[it].shape[0]):
-        print(ix, iy, slice_xs[ix,iy], slice_ys[ix,iy], slice_data[it][ix,iy])
-        nix = round(slice_xs[ix,iy] / 0.6)
-        niy = round(slice_ys[ix,iy] / 0.6)
-        print(nix, niy)
+out_path_extinction = os.path.join(out_path, 'extinction')
+if not os.path.exists(out_path_extinction):
+    os.mkdir(out_path_extinction)
+    
+for it in range(len(slice_times)):
+    time_index = int(slice_times[it])
+    file_name = os.path.join(out_path_extinction, f'sf_{time_index}.txt')
+#    file_name = f'sl_{time_index:04d}.txt'
+    print(file_name)
+    sf = np.savetxt(file_name, slice_data['extinction'][it], delimiter=' ')
 
 # ------------------------------------------------------------------------------
 # STEP II
@@ -79,12 +86,15 @@ for q in quantities:
     slices = sorted(slices, key=lambda slice: int(slice[ slice.rfind('_')+1 : -4 ]) )
 
     for i, slice in enumerate(slices[:]):
+    #for it in range(len(slice_times)):
+        #t = slice_times[it]
         slice_nr = int(slice[slice.rfind('_')+1 : -4])
-        print("\t --> ", slice)
+        print("\t --> ", slice_nr)
 
         # load ascii slice file
         sf = np.loadtxt(slice, delimiter=' ')
-
+        #sf = slice_data[q][it]
+        
         # interpolate slice file to ASET map resolution dx=0.2 m --> dx=0.6 m
         sf_interp = np.array(Image.fromarray(sf).resize((len(x), len(y))))#imresize(sf, np.shape(aset_map), interp='bilinear')
         # sf_interp.transpose()
