@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3875550.svg)](https://doi.org/10.5281/zenodo.3875550)
 # A Map Representation of the ASET-RSET concept
 
 Base case scenario for demonstration purposes. Reference implementation of the methodology proposed in 
