@@ -31,7 +31,6 @@ slice_extinction = slice_reader.findSlices(slice_infos, meshes, aset_quantity, 2
 slice_extinction.readAllTimes(data_root)
 slice_extinction.readData(data_root)
 slice_extinction.mapData(meshes)
-#print(slice_extinction.times)
 
 slice_times = slice_extinction.times
 slice_data = {'extinction' : slice_extinction.sd}
@@ -48,9 +47,8 @@ if not os.path.exists(out_path_extinction):
     
 for it in range(len(slice_times)):
     time_index = int(slice_times[it])
-    file_name = os.path.join(out_path_extinction, f'sf_{time_index}.txt')
-#    file_name = f'sl_{time_index:04d}.txt'
-    print(file_name)
+    file_name = os.path.join(out_path_extinction, 'sf_{}.txt'.format(time_index))
+    print('created slice data file:', file_name)
     sf = np.savetxt(file_name, slice_data['extinction'][it], delimiter=' ')
 
 # ------------------------------------------------------------------------------
@@ -82,23 +80,18 @@ cmap_g = cm.get_cmap('Greys')
 
 for q in quantities:
 
-    slices = glob.glob('HRR_60kW/ascii_slices/%s/*.txt'%q)
+    slices = glob.glob('HRR_60kW/ascii_slices/{}/*.txt'.format(q))
     slices = sorted(slices, key=lambda slice: int(slice[ slice.rfind('_')+1 : -4 ]) )
 
     for i, slice in enumerate(slices[:]):
-    #for it in range(len(slice_times)):
-        #t = slice_times[it]
         slice_nr = int(slice[slice.rfind('_')+1 : -4])
         print("\t --> ", slice_nr)
 
         # load ascii slice file
         sf = np.loadtxt(slice, delimiter=' ')
-        #sf = slice_data[q][it]
         
         # interpolate slice file to ASET map resolution dx=0.2 m --> dx=0.6 m
-        sf_interp = np.array(Image.fromarray(sf).resize((len(x), len(y))))#imresize(sf, np.shape(aset_map), interp='bilinear')
-        # sf_interp.transpose()
-        print(sf.shape, sf_interp.shape, aset_map.shape)
+        sf_interp = np.array(Image.fromarray(sf).resize((len(x), len(y))))
 
         # ASET map generation
         for j, row in enumerate(sf_interp):
